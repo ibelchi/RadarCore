@@ -18,27 +18,28 @@ Aplicació de terminal i Streamlit per al filtratge de valors en dues etapes: Ge
 
 ## Instal·lació
 
-1. Clonar el repositori:
-   ```bash
-   git clone <url-del-repositori>
-   cd assessor
-   ```
+1. **Baixar el projecte**:
+   Si tens Git: `git clone https://github.com/ibelchi/swing_trading.git`
+   Si no, descarrega el ZIP de GitHub i descomprimeix-lo.
 
-2. Instal·lar dependències:
+2. **Instal·lar llibreries**:
+   Obre una terminal a la carpeta i executa:
    ```bash
    pip install -r requirements.txt
    ```
 
-3. Configurar les claus d'API:
-   Crea un fitxer `.env` basat en el template (o modifica el que ja existeix) amb les teves claus de Google Gemini o OpenAI.
+3. **Configurar l'API**:
+   - Edita el fitxer `.env` a la carpeta arrel.
+   - Selecciona el teu proveïdor a `LLM_PROVIDER` ('gemini', 'openai' o 'ollama').
+   - Posa la teva clau d'API a la línia corresponent (`GEMINI_API_KEY` o `OPENAI_API_KEY`).
 
 ## Ús
 
-Executa l'aplicació amb Streamlit:
-```bash
-streamlit run app.py
-```
-O utilitza el fitxer `run_app.bat` en sistemes Windows.
+1. **Llista de valors**: Modifica el fitxer `tickers.csv` per afegir els símbols que vulguis analitzar.
+2. **Execució**:
+   - Windows: Fes doble clic a `run_app.bat`.
+   - General: `streamlit run app.py`
+
 
 ## Arquitectura
 
