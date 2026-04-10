@@ -20,6 +20,7 @@ from src.database.db import SessionLocal, Opportunity, StrategyConfig
 from src.scanner.market_scanner import MarketScanner
 from src.ai.rag_engine import RAGEngine
 from src.ai.report_generator import ReportGenerator
+from src.data.ingestion import get_company_info, get_historical_data
 
 # --- CONFIGURACIÓ PÀGINA ---
 st.set_page_config(page_title="Assistent Anàlisi Inversió", layout="wide")
@@ -70,6 +71,71 @@ with tab_scanner:
                     st.balloons()
                 except Exception as e:
                     st.error(f"⚠️ Error crític durant l'escaneig: {e}")
+
+    st.divider()
+    st.subheader("🔍 Anàlisi Directa (A la carta)")
+    st.write("Genera un informe professional d'IA per a qualsevol ticker immediatament.")
+    
+    c1, c2 = st.columns([1, 4])
+    with c1:
+        manual_ticker = st.text_input("Introdueix Ticker (ex: TSLA, SAN.MC, 7203.T):").upper()
+        if st.button("Generar Informe Ara", type="primary"):
+            if not manual_ticker:
+                st.warning("Escriu un símbol vàlid.")
+            else:
+                with st.spinner(f"Recollint dades i analitzant {manual_ticker}..."):
+                    try:
+                        info = get_company_info(manual_ticker)
+                        hist = get_historical_data(manual_ticker)
+                        
+                        if hist.empty:
+                            st.error("No s'han pogut trobar dades per aquest ticker.")
+                        else:
+                            # Preparar mètriques al vol
+                            curr_p = hist['Close'].iloc[-1]
+                            high_60 = hist['High'].tail(60).max()
+                            low_60 = hist['Low'].tail(60).min()
+                            
+                            metrics = {
+                                "current_price": curr_p,
+                                "period_high": high_60,
+                                "period_low": low_60,
+                                "drop_pct": ((high_60 - curr_p) / high_60) * 100,
+                                "rebound_pct": ((curr_p - low_60) / low_60) * 100,
+                                "lookback_days": 60,
+                                "market_cap": info.get("market_cap", 0) / 1e9,
+                                "volume": hist['Volume'].tail(10).mean() / 1e6,
+                                "per": info.get("per", "N/A"),
+                                "eps": info.get("eps", "N/A"),
+                                "dividend_yield": info.get("dividend_yield", "N/A"),
+                                "next_earnings": info.get("next_earnings", "N/A")
+                            }
+                            
+                            gen = ReportGenerator()
+                            report = gen.generate_report(
+                                symbol=manual_ticker,
+                                strategy_name="Anàlisi Directa",
+                                tech_reason="Sol·licitud manual de l'usuari.",
+                                current_price=curr_p,
+                                metrics=metrics
+                            )
+                            
+                            st.session_state['manual_report'] = report
+                            st.session_state['manual_ticker_status'] = manual_ticker
+
+                    except Exception as e:
+                        st.error(f"Error analitzant {manual_ticker}: {e}")
+
+    with c2:
+        if 'manual_report' in st.session_state:
+            st.markdown(f"### Informe de Recerca: {st.session_state['manual_ticker_status']}")
+            st.markdown(st.session_state['manual_report'])
+            st.download_button(
+                label=f"📥 Descarregar Informe {st.session_state['manual_ticker_status']}",
+                data=st.session_state['manual_report'],
+                file_name=f"informe_{st.session_state['manual_ticker_status']}.md",
+                mime="text/markdown"
+            )
 
     with st.expander("🗑️ Zona de perill"):
         if st.button("Esborrar tot l'Historial", type="secondary"):
