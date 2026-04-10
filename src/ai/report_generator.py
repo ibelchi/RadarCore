@@ -14,10 +14,14 @@ class ReportGenerator:
     def __init__(self):
         # Intentem agafar la clau directament de l'entorn per ser més robusts
         api_key = os.getenv("GOOGLE_API_KEY", "").strip()
+        if api_key:
+            os.environ["GOOGLE_API_KEY"] = api_key
+
         self.llm = ChatGoogleGenerativeAI(
             model="gemini-1.5-flash-latest", 
             temperature=0.2,
-            api_key=api_key
+            api_key=api_key if api_key else None,
+            google_api_key=api_key if api_key else None
         )
         self.rag = RAGEngine()
         
