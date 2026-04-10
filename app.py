@@ -3,6 +3,10 @@ import pandas as pd
 import tempfile
 import os
 import json
+from dotenv import load_dotenv
+
+# Carregar variables d'entorn al principi de tot
+load_dotenv()
 from src.database.db import SessionLocal, Opportunity, StrategyConfig
 from src.scanner.market_scanner import MarketScanner
 from src.ai.rag_engine import RAGEngine
@@ -150,7 +154,7 @@ with tab_knowledge:
     pdf_docs = st.file_uploader("Puja els teus llibres en PDF ací", accept_multiple_files=True, type=['pdf'])
     if st.button("Processar i Injectar Coneixement"):
         if pdf_docs:
-            with st.spinner("Fragmentant i vectoritzant els documents (FAISS + OpenAI Embeddings)..."):
+            with st.spinner("Fragmentant i vectoritzant els documents (FAISS + Google Embeddings)..."):
                 eng = RAGEngine()
                 for pdf_file in pdf_docs:
                     # Guardem el text pujat
