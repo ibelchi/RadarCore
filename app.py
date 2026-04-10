@@ -71,6 +71,16 @@ with tab_scanner:
                 except Exception as e:
                     st.error(f"⚠️ Error crític durant l'escaneig: {e}")
 
+    with st.expander("🗑️ Zona de perill"):
+        if st.button("Esborrar tot l'Historial", type="secondary"):
+            db = SessionLocal()
+            try:
+                db.query(Opportunity).delete()
+                db.commit()
+                st.warning("S'ha buidat la base de dades d'oportunitats.")
+            finally:
+                db.close()
+
 # --- TAB HISTORY ---
 with tab_history:
     st.header("Oportunitats Detectades")
@@ -86,6 +96,7 @@ with tab_history:
                 data.append({
                     "ID": op.id,
                     "Data": op.date_detected.strftime('%Y-%m-%d %H:%M'),
+                    "Mercat": op.market.upper() if op.market else "S&P500",
                     "Símbol": f"https://es.finance.yahoo.com/quote/{op.symbol}/",
                     "Estratègia": op.strategy_name,
                     "Preu": f"${op.current_price:.2f}",

@@ -65,7 +65,8 @@ class MarketScanner:
                                 current_price=result.get("current_price"),
                                 strategy_config=config,
                                 explanation=result.get("reason"),
-                                metrics=result.get("metrics")
+                                metrics=result.get("metrics"),
+                                market=market # Guardem el mercat on s'ha trobat
                                 # market_context & ai_explanation seran emplenats per IA després (Fase 6)
                             )
                             db.add(op)
