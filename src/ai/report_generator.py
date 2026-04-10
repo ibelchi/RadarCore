@@ -25,8 +25,8 @@ class ReportGenerator:
         )
         self.rag = RAGEngine()
         
-    def generate_report(self, symbol: str, strategy_name: str, tech_reason: str, current_price: float, metrics: dict = None) -> str:
-        """Agrupa el coneixement RAG amb la troballa tècnica per oferir un resum."""
+    def generate_report(self, symbol: str, strategy_name: str, tech_reason: str, current_price: float, metrics: dict = None, language: str = "Catalan") -> str:
+        """Agrupa el coneixement RAG amb la troballa tècnica per oferir un resum en l'idioma seleccionat."""
         
         # Consultem a la bdd de coneixement del RAG quins criteris té l'usuari
         # o consells generals sobre swing trading i l'estratègia en concret.
@@ -88,11 +88,11 @@ Genera l'informe exactament amb aquests punts. És CRUCIAL que etiquetis cada or
 LÒGICA CRÍTICA:
 * Si les dades actuals són dolentes malgrat el gràfic, sigues cautelós.
 * Si el context RAG diu que no vols invertir en aquesta empresa, el veredicte ha de ser DESCARTAT.
-* Respon sempre en CATALÀ.
+* Respon sempre en {language}.
 
 ---
-AVÍS DE TRANSPARÈNCIA AL FINAL DE L'INFORME:
-Afegeix sempre: "⚠️ Nota: Les seccions marcades com a 'CONTEXTUAL' es basen en el coneixement del model d'IA i poden no reflectir canvis corporatius d'última hora. Verifiqueu sempre les dades crítiques."
+AVÍS DE TRANSPARÈNCIA AL FINAL DE L'INFORME (en {language}):
+Afegeix sempre una nota indicant que les seccions marcades com a 'CONTEXTUAL' es basen en el coneixement del model d'IA i poden no reflectir canvis corporatius d'última hora.
 """)
         
         formatted_prompt = prompt.format(
@@ -111,7 +111,8 @@ Afegeix sempre: "⚠️ Nota: Les seccions marcades com a 'CONTEXTUAL' es basen 
             per=metrics.get("per", "N/A"),
             eps=metrics.get("eps", "N/A"),
             dividend_yield=metrics.get("dividend_yield", "N/A"),
-            next_earnings=metrics.get("next_earnings", "N/A")
+            next_earnings=metrics.get("next_earnings", "N/A"),
+            language=language
         )
         
         try:
