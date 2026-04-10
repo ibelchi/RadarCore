@@ -13,11 +13,11 @@ logger = logging.getLogger(__name__)
 class ReportGenerator:
     def __init__(self):
         # Intentem agafar la clau directament de l'entorn per ser més robusts
-        api_key = os.getenv("GOOGLE_API_KEY")
+        api_key = os.getenv("GOOGLE_API_KEY", "").strip()
         self.llm = ChatGoogleGenerativeAI(
             model="gemini-1.5-flash-latest", 
             temperature=0.2,
-            google_api_key=api_key
+            api_key=api_key
         )
         self.rag = RAGEngine()
         

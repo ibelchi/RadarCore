@@ -18,10 +18,10 @@ VECTOR_DB_PATH = os.path.join(BASE_DIR, 'data', 'vector_store')
 class RAGEngine:
     def __init__(self):
         # Fem servir Google Embeddings per consistència (requereix GOOGLE_API_KEY a .env)
-        api_key = os.getenv("GOOGLE_API_KEY")
+        api_key = os.getenv("GOOGLE_API_KEY", "").strip()
         self.embeddings = GoogleGenerativeAIEmbeddings(
             model="models/embedding-001",
-            google_api_key=api_key
+            api_key=api_key
         )
         self.vector_store = None
         
