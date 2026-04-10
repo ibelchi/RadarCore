@@ -24,6 +24,11 @@ from src.ai.report_generator import ReportGenerator
 # --- CONFIGURACIÓ PÀGINA ---
 st.set_page_config(page_title="Assistent Anàlisi Inversió", layout="wide")
 st.title("📈 Assistent Personal d'Anàlisi d'Inversió (Swing Trading)")
+key = os.getenv("GOOGLE_API_KEY", "")
+st.sidebar.info(f"API Key: {'✅ Carregada' if key else '❌ No trobada'}")
+if key:
+    st.sidebar.write(f"Prefix: {key[:5]}...")
+    st.sidebar.write(f"Longitud: {len(key)} caràcters")
 
 # --- TABS ---
 tab_scanner, tab_history, tab_config, tab_knowledge = st.tabs([
@@ -86,6 +91,7 @@ with tab_history:
                 if op:
                     if op.explanation and not op.market_context:
                         with st.spinner("L'IA està analitzant la troballa tècnica contrastant amb el RAG..."):
+                            st.write(f"DEBUG: Llançant generador amb clau prefix {os.getenv('GOOGLE_API_KEY', '')[:5]}...")
                             gen = ReportGenerator()
                             # El informe es guarda a 'market_context' o el mostrem directament
                             informe = gen.generate_report(
