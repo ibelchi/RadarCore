@@ -34,10 +34,12 @@ st.markdown("""
         background-color: #9b59b6;
         color: white;
         border-radius: 5px;
+        border: 1px solid #000000;
     }
     div.stButton > button:first-child:hover {
         background-color: #8e44ad;
         color: white;
+        border: 1px solid #000000;
     }
     /* Specific styling for the Delete button (Danger) */
     div.stButton > button[kind="secondary"] {
