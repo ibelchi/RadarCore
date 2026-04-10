@@ -1,34 +1,50 @@
-# Assistent Personal d'Anàlisi d'Inversió (Swing Trading)
+# AI Investment Research Terminal (Swing Trading)
 
-Un assistent autònom dissenyat per escanejar el mercat de valors de l'S&P 500, trobar oportunitats paramètriques per swing trading ("Buy the Dip") i explicar l'escat de mercat combinant anàlisi tècnica amb documents de coneixement d'inversió (RAG).
+An autonomous assistant designed to scan the stock market (S&P 500, NASDAQ 100, and more), identify parametric "Buy the Dip" swing trading opportunities, and explain the market context by combining technical analysis with personal investment knowledge (RAG).
 
-## Funcionalitats
+## Features
 
-* **Market Scanner:** Escàner automàtic de condicions tècniques per filtratge.
-* **Sistema d'Estratègies:** Connectable. De base inclou l'estratègia configurables de recuperació post-caiguda.
-* **Generació d'informes IA:** Combina la lògica calculada amb consells RAG pujats des de PDFs de l'inversor gràcies a LangChain i models OpenAI.
-* **Streamlit UI:** Base de dades SQLite automatitzada i un quadre de comandaments interactiu de fàcil ús.
-* **Simulació històrica (Backtesting):** Capacitat per avaluar regles al passat.
+* **Market Scanner:** Automatic scanning of technical conditions for filtering. Supports S&P 500, NASDAQ 100, IBEX 35, DAX 40, and more.
+* **Strategy System:** Plug-and-play architecture. Includes a configurable "Buy the Dip" strategy by default.
+* **AI Report Generation:** Combines calculated technical metrics with specific user knowledge (RAG) uploaded from PDFs using Google Gemini.
+* **Streamlit UI:** Automated SQLite database and an interactive, easy-to-use research dashboard.
+* **Historical Context:** Ability to evaluate rules against past price action for better decision making.
+* **Multi-Language Support:** Generate research reports in English, Spanish, or Catalan.
 
-## Requisits
+## Requirements
 
 * Python 3.9+
-* API Key de OpenAI (per a que els reports usin ChatGPT per llegir).
+* Google Gemini API Key (set as `GOOGLE_API_KEY` in `.env`).
 
-## Instal·lació
+## Installation
 
 ```bash
-git clone <aquest-repo>
+git clone https://github.com/ibelchi/swing_trading.git
 cd investment_assistant
 python -m venv venv
 venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-*(Pendent de generar el llistat requirements.txt si s'escau)*
+1. Create a `.env` file in the root directory and add your key:
+   ```env
+   GOOGLE_API_KEY=your_api_key_here
+   ```
 
-Obrir la interfície via PowerShell:
-```powershell
-streamlit run app.py
-```
-O fer servir la drecera script .BAT (Windows) creat al directori d'arrel.
+2. Run the application:
+   ```powershell
+   streamlit run app.py
+   ```
+   *Alternatively, use the `Start_Assistant.bat` shortcut on Windows.*
+
+## User Documentation
+- [RAG Instructions](file:///c:/Users/Belchi/.gemini/antigravity/scratch/investment_assistant/RAG_INSTRUCTIONS.md): Learn how to personalize the AI with your own investment philosophy.
+
+## Future Roadmap
+- **Advanced Backtesting:** Full historical simulation module to validate strategies over multi-year periods.
+- **Sentiment Analysis:** Integration with news APIs and social media to gauge market sentiment.
+- **Real-time Alerts:** Telegram/Email notifications when a new opportunity is detected.
+- **Portfolio Tracking:** Basic module to track the performance of detected opportunities.
+
+---
+*Disclaimer: This tool is for educational and research purposes only. It does not constitute financial advice.*

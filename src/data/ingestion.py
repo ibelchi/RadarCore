@@ -7,7 +7,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 def get_sp500_symbols() -> list:
-    """Obtenir la llista actual de símbols del S&P 500 des de la Viquipèdia."""
+    """Gets the current list of S&P 500 symbols from Wikipedia."""
     try:
         url = 'https://en.wikipedia.org/wiki/List_of_S%26P_500_companies'
         headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
@@ -16,17 +16,17 @@ def get_sp500_symbols() -> list:
         
         tables = pd.read_html(StringIO(response.text))
         df = tables[0]
-        # Alguns símbols tenen punts en lloc de guions a yfinance (ej. BRK.B -> BRK-B)
+        # Some symbols have dots instead of hyphens in yfinance (e.g., BRK.B -> BRK-B)
         symbols = df['Symbol'].str.replace('.', '-', regex=False).tolist()
         return symbols
     except Exception as e:
-        logger.error(f"Error obtenint símbols del S&P500: {e}")
+        logger.error(f"Error obtaining S&P 500 symbols: {e}")
         return []
 
 def get_market_symbols(market: str) -> list:
     """
-    Obtenir llista de símbols segons el mercat seleccionat. 
-    Utilitza llistes hardcodejades on l'scraping és fràgil per mantenir la simplicitat màxima.
+    Gets symbol list based on the selected market.
+    Uses hardcoded lists where scraping is fragile to maintain maximum simplicity.
     """
     market = market.lower()
     
@@ -71,29 +71,29 @@ def get_market_symbols(market: str) -> list:
 
 def get_historical_data(symbol: str, period: str = "1y") -> pd.DataFrame:
     """
-    Obtenir dades històriques EOD (End of Day) per a un símbol específic.
-    period format aleviat de yfinance (e.g. '1mo', '3mo', '6mo', '1y', '2y')
+    Gets EOD (End of Day) historical data for a specific symbol.
+    period format as per yfinance (e.g., '1mo', '3mo', '6mo', '1y', '2y')
     """
     try:
         ticker = yf.Ticker(symbol)
         df = ticker.history(period=period)
         if df.empty:
-            logger.warning(f"No hi ha dades històriques per {symbol}")
+            logger.warning(f"No historical data for {symbol}")
         return df
     except Exception as e:
-        logger.error(f"Error obtenint dades de {symbol}: {e}")
+        logger.error(f"Error obtaining data for {symbol}: {e}")
         return pd.DataFrame()
 
 def get_company_info(symbol: str) -> dict:
-    """Obtenir informació bàsica de l'empresa (capitalització, sector, etc.)."""
+    """Gets basic company information (market cap, sector, etc.)."""
     try:
         ticker = yf.Ticker(symbol)
         info = ticker.info
-        # Mètriques fonamentals extres
+        # Extra fundamental metrics
         earnings_date = info.get("nextEarningsDate")
         if earnings_date:
             try:
-                # Convertir timestamp a string llegible (YYYY-MM-DD)
+                # Convert timestamp to readable string (YYYY-MM-DD)
                 earnings_str = pd.to_datetime(earnings_date, unit='s').strftime('%Y-%m-%d')
             except:
                 earnings_str = "Unknown"
@@ -112,5 +112,5 @@ def get_company_info(symbol: str) -> dict:
             "next_earnings": earnings_str
         }
     except Exception as e:
-        logger.error(f"Error obtenint informació de la companyia {symbol}: {e}")
+        logger.error(f"Error obtaining company information for {symbol}: {e}")
         return {}

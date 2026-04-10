@@ -11,17 +11,17 @@ class BuyTheDipStrategy(StrategyBase):
     @property
     def default_parameters(self) -> Dict[str, Any]:
         return {
-            "min_drop_pct": 15.0,        # Caiguda mínima des del màxim
-            "lookback_days": 60,         # Finestra de dies a observar el màxim
-            "min_rebound_pct": 2.0,      # Han de pujar un mínim 2% des del fons per confirmar canvi tendència
-            "min_market_cap_b": 10.0,    # Capitalització mínima en Billions
-            "min_volume_m": 1.0          # Volum diari mínim en Millions
+            "min_drop_pct": 15.0,        # Minimum drop from high
+            "lookback_days": 60,         # Window of days to observe the high
+            "min_rebound_pct": 2.0,      # Must rise a minimum of 2% from the bottom to confirm trend change
+            "min_market_cap_b": 10.0,    # Minimum capitalization in Billions
+            "min_volume_m": 1.0          # Minimum daily volume in Millions
         }
         
     def analyze(self, symbol: str, hist_data: pd.DataFrame, info_data: dict, config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
-        Detecta accions que han caigut respecte al seu recent màxim però que
-        ja han començat a rebotar des d'un mínim.
+        Detects stocks that have fallen from their recent high but have
+        already started to rebound from a low.
         """
         p = self.default_parameters.copy()
         if config:
@@ -35,22 +35,22 @@ class BuyTheDipStrategy(StrategyBase):
         }
         
         if hist_data.empty or len(hist_data) < p["lookback_days"]:
-            result["reason"] = f"No hi ha prou dades històriques per analitzar {symbol}"
+            result["reason"] = f"Not enough historical data to analyze {symbol}"
             return result
             
         current_price = hist_data['Close'].iloc[-1]
         result["current_price"] = current_price
         
-        # 1. Comprovació de filtres d'empresa (Market Cap & Volume)
-        market_cap = info_data.get("market_cap", 0) / 1e9 # A Billions
-        avg_volume_10d = hist_data['Volume'].tail(10).mean() / 1e6 # A Millions
+        # 1. Company filter checks (Market Cap & Volume)
+        market_cap = info_data.get("market_cap", 0) / 1e9 # In Billions
+        avg_volume_10d = hist_data['Volume'].tail(10).mean() / 1e6 # In Millions
         
         if market_cap < p["min_market_cap_b"]:
-            result["reason"] = f"Capitalització massa baixa ({market_cap:.1f}B < {p['min_market_cap_b']}B)"
+            result["reason"] = f"Market capitalization too low ({market_cap:.1f}B < {p['min_market_cap_b']}B)"
             return result
             
         if avg_volume_10d < p["min_volume_m"]:
-            result["reason"] = f"Volum de negociació molt baix ({avg_volume_10d:.1f}M < {p['min_volume_m']}M)"
+            result["reason"] = f"Trading volume too low ({avg_volume_10d:.1f}M < {p['min_volume_m']}M)"
             return result
             
         # 2. Càlcul de caiguda i fons
@@ -59,11 +59,11 @@ class BuyTheDipStrategy(StrategyBase):
         period_high = recent_data['High'].max()
         period_low = recent_data['Low'].min()
         
-        # Calcular devaluació des del màxim respecte al preu actual
+        # Calculate devaluation from high relative to current price
         drop_pct = ((period_high - current_price) / period_high) * 100
         
-        # 3. Calcular el rebot actual
-        # Comprovem si des del fons (period_low) ha rebotat indicant inici de "recovery"
+        # 3. Calculate current rebound
+        # Check if from the bottom (period_low) it has rebounded indicating start of "recovery"
         rebound_pct = ((current_price - period_low) / period_low) * 100
         
         result["metrics"] = {
@@ -81,28 +81,28 @@ class BuyTheDipStrategy(StrategyBase):
         }
         
         if drop_pct < p["min_drop_pct"]:
-            result["reason"] = f"No ha caigut prou des del màxim recent ({drop_pct:.1f}% < {p['min_drop_pct']}%). Màxim període: ${period_high:.2f}, preu actual: ${current_price:.2f}"
+            result["reason"] = f"Has not fallen enough from recent high ({drop_pct:.1f}% < {p['min_drop_pct']}%). Period High: ${period_high:.2f}, Current Price: ${current_price:.2f}"
             return result
             
         if rebound_pct < p["min_rebound_pct"]:
-            result["reason"] = f"No hi ha signe que la sagnia hagi acabat (rebut del {rebound_pct:.1f}% < {p['min_rebound_pct']}%)."
+            result["reason"] = f"No sign that the bleeding has ended (rebound of {rebound_pct:.1f}% < {p['min_rebound_pct']}%)."
             return result
             
-        # També potser no ens interessa si ja ha pujat massa des del fons (> per exemple un percent de la caiguda).
-        # Implementació senzilla per ara.
+        # Also maybe we are not interested if it has already risen too much from the bottom (> e.g. a percent of the drop).
+        # Simple implementation for now.
         
-        # Si hem arribat aquí, és una "oposició d'entrada!"
+        # If we reached here, it's an "entry opportunity!"
         result["is_opportunity"] = True
         
-        # Formula rudimentària de "Confiança"
-        # Més caiguda i més rebot robust (però no excessiu) = més confiança.
-        conf_drop = min(drop_pct / 30.0, 1.0) * 0.6  # 60% peso
-        conf_rebound = min(rebound_pct / 5.0, 1.0) * 0.4 # 40% peso
+        # Rudimentary "Confidence" formula
+        # More drop and a robust (but not excessive) rebound = more confidence.
+        conf_drop = min(drop_pct / 30.0, 1.0) * 0.6  # 60% weight
+        conf_rebound = min(rebound_pct / 5.0, 1.0) * 0.4 # 40% weight
         result["confidence"] = round((conf_drop + conf_rebound) * 100, 2)
         
         result["reason"] = (
-            f"Oportunitat Buy the Dip detectada en {symbol}. "
-            f"El valor ha caigut un {drop_pct:.1f}% des del seu màxim dels últims {p['lookback_days']} dies (${period_high:.2f}). "
-            f"Actualment es troba a ${current_price:.2f}, havent rebotat un {rebound_pct:.1f}% des del mínim local (${period_low:.2f}), validant inici de recuperació."
+            f"Buy the Dip opportunity detected in {symbol}. "
+            f"The value has fallen {drop_pct:.1f}% from its recent {p['lookback_days']}-day high (${period_high:.2f}). "
+            f"Currently priced at ${current_price:.2f}, having rebounded {rebound_pct:.1f}% from the local low (${period_low:.2f}), validating the start of a recovery."
         )
         return result

@@ -5,14 +5,14 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import PromptTemplate
 from src.ai.rag_engine import RAGEngine
 
-# Carregar variables d'entorn des de .env
+# Load environment variables from .env
 load_dotenv()
 
 logger = logging.getLogger(__name__)
 
 class ReportGenerator:
     def __init__(self):
-        # Intentem agafar la clau directament de l'entorn per ser més robusts
+        # Try to get the key directly from the environment to be more robust
         api_key = os.getenv("GOOGLE_API_KEY", "").strip()
         if api_key:
             os.environ["GOOGLE_API_KEY"] = api_key
@@ -25,74 +25,74 @@ class ReportGenerator:
         )
         self.rag = RAGEngine()
         
-    def generate_report(self, symbol: str, strategy_name: str, tech_reason: str, current_price: float, metrics: dict = None, language: str = "Catalan") -> str:
-        """Agrupa el coneixement RAG amb la troballa tècnica per oferir un resum en l'idioma seleccionat."""
+    def generate_report(self, symbol: str, strategy_name: str, tech_reason: str, current_price: float, metrics: dict = None, language: str = "English") -> str:
+        """Groups RAG knowledge with technical findings to provide a summary in the selected language."""
         
-        # Consultem a la bdd de coneixement del RAG quins criteris té l'usuari
-        # o consells generals sobre swing trading i l'estratègia en concret.
-        user_knowledge = self.rag.similarity_search(f"Criterios de inversión y factores de riesgo para {strategy_name} en accions", k=3)
+        # Consult the RAG knowledge base for user criteria
+        # or general advice on swing trading and the specific strategy.
+        user_knowledge = self.rag.similarity_search(f"Investment criteria and risk factors for {strategy_name} in stocks", k=3)
         
-        # Assegurar per defecte diccionari buit per metrics
+        # Ensure default empty dictionary for metrics
         metrics = metrics or {}
         
         prompt = PromptTemplate.from_template("""
-Ets un Expert Equity Analyst & Data Engineer especialitzat en swing trading.
+You are an Expert Equity Analyst & Data Engineer specializing in swing trading.
 
-La teva tasca és generar un informe d'anàlisi fonamental estructurat que acompanyi el senyal de trading detectat.
+Your task is to generate a structured fundamental analysis report to accompany the detected trading signal.
 
-DADES DEL MERCAT ACTUALS (FRESCUES):
-Símbol: {symbol}
-Preu actual: {current_price}
-Màxim recent ({lookback_days} dies): {period_high}
-Mínim recent ({lookback_days} dies): {period_low}
-Caiguda: {drop_pct}% | Rebot: {rebound_pct}%
-Capitalització: {market_cap} B USD
-Volum mitjà: {volume} M
+CURRENT MARKET DATA (FRESH):
+Ticker: {symbol}
+Current Price: {current_price}
+Recent High ({lookback_days} days): {period_high}
+Recent Low ({lookback_days} days): {period_low}
+Drop: {drop_pct}% | Rebound: {rebound_pct}%
+Market Cap: {market_cap} B USD
+Average Volume: {volume} M
 PER (Trailing): {per}
 EPS (Forward): {eps}
 Dividend Yield: {dividend_yield}%
-Propers Resultats: {next_earnings}
+Next Earnings: {next_earnings}
 
-CONEIXEMENT TEÒRIC I CRITERIS DE L'USUARI (RAG):
+THEORETICAL KNOWLEDGE AND USER CRITERIA (RAG):
 {user_knowledge}
 
 ---
-INSTRUCCIONS D'ESTRUCTURA:
-Genera l'informe exactament amb aquests punts. És CRUCIAL que etiquetis cada origen de dades:
+STRUCTURE INSTRUCTIONS:
+Generate the report exactly with these points. It is CRUCIAL to label each data source:
 
-1. Resum Executiu i Puntuació (DADA CONTEXTUAL/SINTÈTICA):
+1. Executive Summary and Score (CONTEXTUAL/SYNTHETIC DATA):
    - Fundamental Score: [0-100]
-   - Nivell de Risc Fonamental: [Baix / Mitjà / Alt / Crític]
-   - Tesi en una frase.
+   - Fundamental Risk Level: [Low / Medium / High / Critical]
+   - One-sentence thesis.
 
-2. Calendari de Riscos i Catalitzadors (DADA FRESCUA):
-   - Pròxims Earnings: {next_earnings} (Alerta si és en < 7 dies).
-   - Data Ex-Dividend: {dividend_yield}% (Dividend actual).
+2. Risk Calendar and Catalysts (FRESH DATA):
+   - Next Earnings: {next_earnings} (Alert if < 7 days).
+   - Ex-Dividend Date: {dividend_yield}% (Current dividend).
 
-3. Salut Financera i Valoració (MESCLA DADES):
-   - EPS: {eps} i PER: {per} (DADA FRESCUA).
-   - Salut General, Deute i Marges (DADA CONTEXTUAL basada en el model Gemini: Avalua segons el teu coneixement del ticker).
+3. Financial Health and Valuation (MIXED DATA):
+   - EPS: {eps} and PER: {per} (FRESH DATA).
+   - General Health, Debt, and Margins (CONTEXTUAL DATA based on Gemini model: Evaluate according to your knowledge of the ticker).
 
-4. Flux de "Diners Intel·ligents" (DADA CONTEXTUAL):
-   - Institutional Ownership, Insider Trading i Sentiment d'analistes. 
-   - (Aquesta secció es basa exclusivament en dades d'entrenament del model, no en temps real).
+4. "Smart Money" Flow (CONTEXTUAL DATA):
+   - Institutional Ownership, Insider Trading, and Analyst Sentiment.
+   - (This section is based exclusively on model training data, not real-time).
 
-5. Context Sectorial (DADA CONTEXTUAL):
-   - Força Relativa del Sector i Correlacions macro.
+5. Sectorial Context (CONTEXTUAL DATA):
+   - Relative Sector Strength and Macro correlations.
 
-6. Resum Final i Veredicte:
-   - Punts a favor i Punts en contra.
-   - Veredicte Fonamental: [APROVAT / CAUTELA / DESCARTAT].
-
----
-LÒGICA CRÍTICA:
-* Si les dades actuals són dolentes malgrat el gràfic, sigues cautelós.
-* Si el context RAG diu que no vols invertir en aquesta empresa, el veredicte ha de ser DESCARTAT.
-* Respon sempre en {language}.
+6. Final Summary and Verdict:
+   - Pros and Cons.
+   - Fundamental Verdict: [APPROVED / CAUTION / DISCARDED].
 
 ---
-AVÍS DE TRANSPARÈNCIA AL FINAL DE L'INFORME (en {language}):
-Afegeix sempre una nota indicant que les seccions marcades com a 'CONTEXTUAL' es basen en el coneixement del model d'IA i poden no reflectir canvis corporatius d'última hora.
+CRITICAL LOGIC:
+* If current data is bad despite the chart, be cautious.
+* If the RAG context says you don't want to invest in this company, the verdict must be DISCARDED.
+* Always respond in {language}.
+
+---
+TRANSPARENCY NOTICE AT THE END OF THE REPORT (in {language}):
+Always add a note indicating that sections marked as 'CONTEXTUAL' are based on the AI model's knowledge and may not reflect last-minute corporate changes.
 """)
         
         formatted_prompt = prompt.format(
@@ -119,5 +119,5 @@ Afegeix sempre una nota indicant que les seccions marcades com a 'CONTEXTUAL' es
             response = self.llm.invoke(formatted_prompt)
             return response.content
         except Exception as e:
-            logger.error(f"Error a l'invocar LLM per reports: {e}")
-            return f"Error des de l'IA per a generar l'informe ({e}). Considereu si la API Key de Google és vàlida."
+            logger.error(f"Error invoking LLM for reports: {e}")
+            return f"Error from AI generating the report ({e}). Check if your Google API Key is valid."

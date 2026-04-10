@@ -14,42 +14,42 @@ class Backtester:
         
     def run_backtest(self, symbols: List[str], start_date: str, end_date: str, custom_config: Optional[Dict] = None) -> List[Dict]:
         """
-        Emula el pas del temps tallant els DataFrames històrics dia a dia per 
-        veure quan la nostra estratègia hauria donat senyal.
+        Emulates the passage of time by slicing historical DataFrames day by day to 
+        see when our strategy would have given a signal.
         """
-        logger.info(f"Iniciant Backtest de {start_date} a {end_date} per {len(symbols)} actius.")
+        logger.info(f"Starting Backtest from {start_date} to {end_date} for {len(symbols)} assets.")
         config = custom_config or self.strategy.default_parameters
         results = []
         
         for sym in symbols:
-            # Descarreguem un any extra de dades abans del start_date per assegurar tenir
-            # prou info per les mitges mòbils i "lookback_days".
+            # We download an extra year of data before start_date to ensure having
+            # enough info for moving averages and "lookback_days".
             hist_start = pd.to_datetime(start_date) - timedelta(days=365)
-            # Fem servir yfinance 'history' descarregant tot el necessari, ací optem
-            # por simplificar baixant el màxim i talant.
+            # We use yfinance 'history' downloading all necessary data, here we choose
+            # to simplify by downloading the maximum and slicing.
             hist_data = get_historical_data(sym, period="2y")
             info_data = get_company_info(sym)
             
             if hist_data.empty:
                 continue
                 
-            # Filtrem entre start_date i end_date per simular
+            # Filter between start_date and end_date to simulate
             mask = (hist_data.index >= pd.to_datetime(start_date, utc=True)) & (hist_data.index <= pd.to_datetime(end_date, utc=True))
             sim_indexes = hist_data[mask].index
             
             for sim_date in sim_indexes:
-                # El "passat" al punt d'avaluació
+                # The "past" at the evaluation point
                 past_data = hist_data[hist_data.index <= sim_date]
                 
-                # Intentem analitzar com si fóssim a eixe dia
+                # We attempt to analyze as if we were at that day
                 res = self.strategy.analyze(sym, past_data, info_data, config)
                 
                 if res.get("is_opportunity"):
-                    # Compra "virtual"
+                    # "Virtual" purchase
                     entry_price = res["current_price"]
                     
-                    # Verifiquem si hauria sigut un éxit o fracàs (ex: buscar rendimient a +30 dies)
-                    future_data = hist_data[hist_data.index > sim_date].head(20) # Mirem les seguents 20 sessions (aprox 1 mes)
+                    # We verify if it would have been a success or failure (ex: look for performance at +30 days)
+                    future_data = hist_data[hist_data.index > sim_date].head(20) # We look at the next 20 sessions (approx 1 month)
                     if not future_data.empty:
                         max_future_price = future_data["High"].max()
                         profit_pct = ((max_future_price - entry_price) / entry_price) * 100

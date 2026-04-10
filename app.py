@@ -6,7 +6,7 @@ import json
 from dotenv import load_dotenv
 import google.generativeai as genai
 
-# Carregar i configurar Google AI al principi de tot
+# Load and configure Google AI at the very beginning
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 env_path = os.path.join(BASE_DIR, ".env")
 load_dotenv(env_path)
@@ -150,7 +150,7 @@ with tab_history:
                 })
             
             df = pd.DataFrame(data)
-            df = df.sort_values(by="Symbol") # Ordenació alfabètica
+            df = df.sort_values(by="Symbol") # Alphabetical sorting
             
             st.dataframe(
                 df.drop(columns=["_symbol_real"]),
@@ -203,7 +203,7 @@ with tab_history:
                 st.divider()
                 
                 # Part 2: Multiselect from History
-                ticker_list = sorted(df["_symbol_real"].unique().tolist()) # Ordenació alfabètica
+                ticker_list = sorted(df["_symbol_real"].unique().tolist()) # Alphabetical sorting
                 selected_symbols = st.multiselect("Select from History", ticker_list)
                 
                 if st.button("Generate Selected", type="primary"):
@@ -217,10 +217,10 @@ with tab_history:
                                 op = db.query(Opportunity).filter(Opportunity.symbol == sym).order_by(Opportunity.date_detected.desc()).first()
                                 if op:
                                     gen = ReportGenerator()
-                                    informe = gen.generate_report(op.symbol, op.strategy_name, op.explanation, op.current_price, op.metrics, language=report_lang)
+                                    report_content = gen.generate_report(op.symbol, op.strategy_name, op.explanation, op.current_price, op.metrics, language=report_lang)
                                     st.markdown(f"### Report: {sym}")
-                                    st.markdown(informe)
-                                    all_reports += f"# MARKET REPORT: {sym}\n\n{informe}\n\n---\n\n"
+                                    st.markdown(report_content)
+                                    all_reports += f"# MARKET REPORT: {sym}\n\n{report_content}\n\n---\n\n"
                                 progress_bar.progress((idx + 1) / len(selected_symbols))
                                 status.update(label=f"Analysis of {sym} completed", state="complete")
                         

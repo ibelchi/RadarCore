@@ -10,54 +10,54 @@ logger = logging.getLogger(__name__)
 
 class MarketScanner:
     def __init__(self):
-        # Llista de plugins actius
+        # List of active plugins
         self.strategies = [
             BuyTheDipStrategy()
         ]
         
     def run_scan(self, market: str = "sp500", limit_symbols: Optional[int] = None):
         """
-        Executa totes les estratègies actives sobre els símbols del mercat adient.
-        :param market: Codi del mercat a escanejar.
-        :param limit_symbols: Limitar el nombre d'accions a escanejar (útil per testejar)
+        Executes all active strategies over the appropriate market symbols.
+        :param market: Market code to scan.
+        :param limit_symbols: Limit the number of stocks to scan (useful for testing)
         """
-        logger.info(f"Iniciant Market Scanner ({market})...")
+        logger.info(f"Starting Market Scanner ({market})...")
         symbols = get_market_symbols(market)
         
         if not symbols or len(symbols) == 0:
-            raise RuntimeError(f"L'escàner no ha estat capaç d'obtenir cap llistat base de símbols del mercat {market}. Comproveu l'origen de dades.")
+            raise RuntimeError(f"The scanner was unable to obtain any base list of symbols for the {market} market. Please check the data source.")
             
         if limit_symbols:
             symbols = symbols[:limit_symbols]
             
-        logger.info(f"S'escanejaran {len(symbols)} símbols...")
+        logger.info(f"Scanning {len(symbols)} symbols...")
         
         db = SessionLocal()
         try:
             for strategy in self.strategies:
-                # Recuperar paràmetres de DB si n'hi ha, altrament defecte
+                # Retrieve parameters from DB if available, otherwise use defaults
                 config_record = db.query(StrategyConfig).filter(StrategyConfig.strategy_name == strategy.name).first()
                 config = config_record.parameters if config_record else strategy.default_parameters
                 
-                logger.info(f"Executant estratègia: {strategy.name}")
+                logger.info(f"Executing strategy: {strategy.name}")
                 
                 for idx, sym in enumerate(symbols):
                     try:
                         if idx % 50 == 0 and idx > 0:
-                            logger.info(f"Progreś: {idx}/{len(symbols)} escanejats.")
+                            logger.info(f"Progress: {idx}/{len(symbols)} scanned.")
                             
-                        # Descarrega les dades necessàries
+                        # Download necessary data
                         hist_data = get_historical_data(sym)
                         info_data = get_company_info(sym)
                         
                         if hist_data.empty:
                             continue
                             
-                        # Executa la lògica de la estratègia del plugin
+                        # Execute plugin strategy logic
                         result = strategy.analyze(sym, hist_data, info_data, config)
                         
                         if result.get("is_opportunity"):
-                            logger.info(f"-> 🟢 EXÍT {sym} | Conf: {result.get('confidence')}% | Raó: {result.get('reason')}")
+                            logger.info(f"-> 🟢 SUCCESS {sym} | Conf: {result.get('confidence')}% | Reason: {result.get('reason')}")
                             
                             op = Opportunity(
                                 symbol=sym,
@@ -66,17 +66,17 @@ class MarketScanner:
                                 strategy_config=config,
                                 explanation=result.get("reason"),
                                 metrics=result.get("metrics"),
-                                market=market, # Guardem el mercat on s'ha trobat
-                                currency=info_data.get("currency", "USD") # Guardem la divisa real
-                                # market_context & ai_explanation seran emplenats per IA després (Fase 6)
+                                market=market, # Store the market where found
+                                currency=info_data.get("currency", "USD") # Store the actual currency
+                                # market_context & ai_explanation will be filled by AI later (Phase 6)
                             )
                             db.add(op)
                             db.commit()
                             
                     except Exception as e:
-                        logger.error(f"Error analitzant el símbol {sym} am {strategy.name}: {e}")
+                        logger.error(f"Error analyzing symbol {sym} with {strategy.name}: {e}")
                         db.rollback()
                         
         finally:
             db.close()
-            logger.info("Market Scan completat!")
+            logger.info("Market Scan completed!")
