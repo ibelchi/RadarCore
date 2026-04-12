@@ -148,14 +148,13 @@ with tab_history:
             st.info("No market opportunities detected yet.")
         else:
             # Display summary table with Yahoo Finance links
-            data = []
-            
-            # Currency formatting helper
             def fmt_curr(price, curr_code):
                 symbols = {"EUR": "€", "USD": "$", "JPY": "¥", "INR": "₹", "GBP": "£"}
                 s = symbols.get(curr_code, curr_code or "$")
                 return f"{price:.2f} {s}"
 
+            data = []
+            for op in opportunities:
                 data.append({
                     "ID": op.id,
                     "Date": op.date_detected.strftime('%Y-%m-%d %H:%M'),
