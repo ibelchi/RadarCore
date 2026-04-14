@@ -1,8 +1,9 @@
 import logging
+import time
 import pandas as pd
 from typing import Optional
 
-from src.data.ingestion import get_market_symbols, get_historical_data, get_company_info
+from src.data.ingestion import get_market_symbols, get_historical_data, get_company_info, RateLimitException
 from src.database.db import SessionLocal, Opportunity, StrategyConfig
 from src.strategies.buy_the_dip import BuyTheDipStrategy
 
@@ -51,6 +52,9 @@ class MarketScanner:
                 
                 for idx, sym in enumerate(symbols):
                     try:
+                        # Safety delay to avoid "Too Many Requests" (429) from Yahoo Finance
+                        time.sleep(1.5)
+
                         if idx % 50 == 0 and idx > 0:
                             logger.info(f"Progress: {idx}/{len(symbols)} scanned.")
                             
@@ -59,6 +63,8 @@ class MarketScanner:
                         info_data = get_company_info(sym)
                         
                         if hist_data.empty:
+                            if on_opportunity_found:
+                                on_opportunity_found(sym, None, {"is_opportunity": False, "reason": "No historical data available"})
                             continue
                             
                         # Execute plugin strategy logic
@@ -75,19 +81,25 @@ class MarketScanner:
                                 strategy_config=config,
                                 explanation=result.get("reason"),
                                 metrics=result.get("metrics"),
-                                market=market, # Store the market where found
-                                currency=info_data.get("currency", "USD") # Store the actual currency
-                                # market_context & ai_explanation will be filled by AI later (Phase 6)
+                                confidence=result.get("confidence", 0.0),
+                                market=market,
+                                currency=info_data.get("currency", "USD")
                             )
                             db.add(op)
                             db.commit()
                             
-                            # Trigger UI callback if provided
-                            if on_opportunity_found:
-                                on_opportunity_found(sym, hist_data, result)
+                        # Trigger UI callback for BOTH success and filtered items (Transparency)
+                        if on_opportunity_found:
+                            on_opportunity_found(sym, hist_data, result)
                             
+                    except RateLimitException as rle:
+                        logger.error(str(rle))
+                        db.rollback()
+                        raise  # Re-raise to immediately stop the entire scan
                     except Exception as e:
                         logger.error(f"Error analyzing symbol {sym} with {strategy.name}: {e}")
+                        if on_opportunity_found:
+                            on_opportunity_found(sym, None, {"is_opportunity": False, "reason": f"System error: {str(e)[:50]}"})
                         db.rollback()
                         
         finally:

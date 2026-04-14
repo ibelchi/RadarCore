@@ -53,26 +53,59 @@ def get_market_symbols(market: str) -> list:
             
     return []
 
-def get_historical_data(symbol: str, period: str = "1y") -> pd.DataFrame:
+# Shared session to avoid being blocked by Yahoo Finance and improve performance
+_SHARED_SESSION = requests.Session()
+_SHARED_SESSION.headers.update({
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+})
+
+class RateLimitException(Exception):
+    pass
+
+def get_historical_data(symbol: str, period: str = "1y", retries: int = 1) -> pd.DataFrame:
     """
-    Gets EOD (End of Day) historical data for a specific symbol.
-    period format as per yfinance (e.g., '1mo', '3mo', '6mo', '1y', '2y')
+    Gets EOD (End of Day) historical data for a specific symbol with retry logic.
     """
-    try:
-        ticker = yf.Ticker(symbol)
-        df = ticker.history(period=period)
-        if df.empty:
-            logger.warning(f"No historical data for {symbol}")
-        return df
-    except Exception as e:
-        logger.error(f"Error obtaining data for {symbol}: {e}")
-        return pd.DataFrame()
+    for attempt in range(retries + 1):
+        try:
+            ticker = yf.Ticker(symbol, session=_SHARED_SESSION)
+            df = ticker.history(period=period)
+            
+            if not df.empty:
+                return df
+                
+            # If empty, try fallback download
+            df = yf.download(symbol, period=period, progress=False, timeout=10)
+            if not df.empty:
+                return df
+
+        except Exception as e:
+            err_msg = str(e).lower()
+            if "too many requests" in err_msg or "429" in err_msg or "ratelimit" in err_msg:
+                if attempt == retries:
+                    raise RateLimitException(f"Yahoo Finance blocked your connection (Rate Limited) on {symbol}")
+                time.sleep(5)
+            else:
+                logger.error(f"Error obtaining data for {symbol}: {str(e)}")
+            
+            if attempt < retries:
+                continue
+            else:
+                break
+                
+    return pd.DataFrame()
 
 def get_company_info(symbol: str) -> dict:
     """Gets basic company information (market cap, sector, etc.)."""
     try:
-        ticker = yf.Ticker(symbol)
+        # Using Ticker with shared session
+        ticker = yf.Ticker(symbol, session=_SHARED_SESSION)
         info = ticker.info
+        
+        if not info or len(info) < 5:
+            logger.warning(f"No sufficient info data for {symbol}")
+            return {}
+            
         # Extra fundamental metrics
         earnings_date = info.get("nextEarningsDate")
         if earnings_date:

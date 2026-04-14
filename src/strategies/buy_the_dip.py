@@ -20,18 +20,18 @@ class BuyTheDipStrategy(StrategyBase):
     @property
     def default_parameters(self) -> Dict[str, Any]:
         return {
-            "min_drop_pct": 15.0,       # Minimum drop from high to period low
-            "lookback_days": 60,         # Window to search for the high
-            "min_rebound_pct": 2.0,      # Minimum rebound from low to confirm turn
-            "min_market_cap_b": 10.0,    # Min market cap in Billions
-            "min_volume_m": 1.0,         # Min daily volume in Millions
+            "min_drop_pct": 10.0,       # Lowered from 15% to be more inclusive
+            "lookback_days": 60,
+            "min_rebound_pct": 2.0,
+            "min_market_cap_b": 2.0,    # Lowered from 10B to include European midcaps
+            "min_volume_m": 0.5,         # Lowered from 1M to 0.5M
             # --- New pattern detection parameters ---
-            "base_window_days": 10,      # Days to analyze for lateral consolidation (L)
-            "base_range_pct": 8.0,       # Max range (%) for lateral base
-            "min_base_days": 10,         # Minimum days since low to classify as L-BASE
-            "min_v_rebound_pct": 5.0,    # Minimum rebound for V-RECOVERY
+            "base_window_days": 10,
+            "base_range_pct": 10.0,      # Slightly more lenient range
+            "min_base_days": 8,          # Slightly shorter base requirement
+            "min_v_rebound_pct": 5.0,
             # --- Market filter ---
-            "min_relative_drop_pct": 5.0 # Min relative drop vs SPY to be non-systemic
+            "min_relative_drop_pct": 3.0 # Lowered from 5%
         }
 
     def analyze(
@@ -118,14 +118,23 @@ class BuyTheDipStrategy(StrategyBase):
 
         if spy_hist_data is not None and not spy_hist_data.empty:
             try:
-                spy_period = spy_hist_data.loc[(spy_hist_data.index >= high_idx) & (spy_hist_data.index <= low_idx)]
+                # Ensure indices are comparable (both localized or both naive)
+                if spy_hist_data.index.tz is not None and recent_data.index.tz is None:
+                    spy_hist_data_local = spy_hist_data.tz_localize(None)
+                elif spy_hist_data.index.tz is None and recent_data.index.tz is not None:
+                    spy_hist_data_local = spy_hist_data.tz_localize(recent_data.index.tz)
+                else:
+                    spy_hist_data_local = spy_hist_data
+
+                spy_period = spy_hist_data_local.loc[(spy_hist_data_local.index >= high_idx) & (spy_hist_data_local.index <= low_idx)]
                 if not spy_period.empty:
                     spy_high = float(spy_period["High"].iloc[0])
                     spy_low = float(spy_period["Low"].min())
                     spy_drop_pct = ((spy_high - spy_low) / spy_high) * 100 if spy_high > 0 else 0.0
                     relative_drop_pct = drop_from_high_pct - spy_drop_pct
                     is_systemic = relative_drop_pct < p["min_relative_drop_pct"]
-            except:
+            except Exception as e:
+                logger.warning(f"Relative analysis failed for {symbol}: {e}")
                 is_systemic = None
 
         result["metrics"] = {
