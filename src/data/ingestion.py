@@ -61,39 +61,53 @@ def get_market_symbols(market: str) -> list:
 class RateLimitException(Exception):
     pass
 
-def get_historical_data(symbol: str, period: str = "1y", retries: int = 3) -> pd.DataFrame:
+def get_historical_data(symbol: str, period: str = "2y", retries: int = 3) -> pd.DataFrame:
     """
-    Gets EOD (End of Day) historical data for a specific symbol with retry logic.
+    Obté les dades històriques EOD per a un símbol, provant variants del ticker
+    (canviant punts per guions) si la primera opció falla, amb lògica de reintent.
     """
-    for attempt in range(retries + 1):
-        try:
-            # 1. Use ticker.history (it is more robust recently)
-            ticker = yf.Ticker(symbol)
-            df = ticker.history(period=period)
-            
-            if not df.empty:
-                return df
+    variants = [
+        symbol,
+        symbol.replace("-", "."),
+        symbol.replace(".", "-"),
+    ]
+    # Eliminar duplicats mantenint l'ordre original
+    unique_variants = list(dict.fromkeys(variants))
+    
+    for variant in unique_variants:
+        for attempt in range(retries + 1):
+            try:
+                # 1. Intent principal: Descàrrega directa amb auto_adjust
+                df = yf.download(variant, period=period, progress=False, timeout=15, auto_adjust=True)
                 
-            # 2. Second attempt: Direct download (no session) if empty
-            df = yf.download(symbol, period=period, progress=False, timeout=10)
-            if not df.empty:
-                return df
+                if not df.empty and len(df) > 50:
+                    if variant != symbol:
+                        logger.info(f"Dades recuperades amb èxit per la variant: {variant}")
+                    return df
+                
+                # 2. Intent secundari: .history (a vegades més robust)
+                ticker = yf.Ticker(variant)
+                df = ticker.history(period=period)
+                if not df.empty and len(df) > 50:
+                    return df
 
-        except Exception as e:
-            err_msg = str(e).lower()
-            if "too many requests" in err_msg or "429" in err_msg or "rate limit" in err_msg:
-                if attempt == retries:
-                    raise RateLimitException(f"Yahoo Finance blocked (429) connection for {symbol}")
-                # Wait longer on each attempt with random jitter
-                time.sleep(5 + random.uniform(1, 4))
-            else:
-                logger.error(f"Error obtaining data for {symbol}: {str(e)}")
-            
-            if attempt < retries:
-                continue
-            else:
-                break
+            except Exception as e:
+                err_msg = str(e).lower()
+                if "too many requests" in err_msg or "429" in err_msg or "rate limit" in err_msg:
+                    if attempt == retries:
+                        if variant == unique_variants[-1]:
+                            raise RateLimitException(f"Yahoo Finance blocked (429) connection for {variant}")
+                        else:
+                            break # Prova la següent variant
+                    time.sleep(2 + random.uniform(1, 3))
+                else:
+                    logger.debug(f"Avís obtenint dades per {variant}: {str(e)}")
                 
+                if attempt < retries:
+                    continue
+                else:
+                    break # Prova la següent variant
+                    
     return pd.DataFrame()
 
 def get_company_info(symbol: str) -> dict:

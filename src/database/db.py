@@ -1,5 +1,5 @@
 import os
-from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, JSON, Text
+from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, JSON, Text, Boolean, text
 from sqlalchemy.orm import declarative_base, sessionmaker
 from datetime import datetime
 
@@ -19,6 +19,24 @@ if os.path.exists(OLD_DB_PATH) and not os.path.exists(DB_PATH):
 os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
 
 engine = create_engine(f'sqlite:///{DB_PATH}', echo=False)
+
+# Safe raw SQL migration for the watchlist
+try:
+    with engine.connect() as conn:
+        conn.execute(text("""
+        CREATE TABLE IF NOT EXISTS watchlist (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            symbol TEXT NOT NULL UNIQUE,
+            added_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+            source TEXT DEFAULT 'manual',  
+            notes TEXT,
+            active BOOLEAN DEFAULT 1
+        )
+        """))
+        conn.commit()
+except Exception as e:
+    print(f"Warning: Could not run raw migration: {e}")
+
 Base = declarative_base()
 
 class Opportunity(Base):
@@ -47,6 +65,16 @@ class StrategyConfig(Base):
     strategy_name = Column(String(50), unique=True, nullable=False)
     parameters = Column(JSON, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+class Watchlist(Base):
+    __tablename__ = 'watchlist'
+    
+    id = Column(Integer, primary_key=True)
+    symbol = Column(String(10), unique=True, nullable=False)
+    added_date = Column(DateTime, default=datetime.utcnow)
+    source = Column(String(20), default='manual')
+    notes = Column(Text, nullable=True)
+    active = Column(Boolean, default=True)
 
 # Create or update the schema
 Base.metadata.create_all(engine)
