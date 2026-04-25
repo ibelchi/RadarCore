@@ -1040,7 +1040,7 @@ with tab_history:
             with col_actions:
                 generate_batch = st.button(
                     "Generate Reports",
-                    type="primary",
+                    type="secondary",
                     use_container_width=True,
                     disabled=True
                 )
