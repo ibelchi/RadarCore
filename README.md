@@ -2,7 +2,7 @@
   <img src="assets/logo.png" width="120" alt="radarcore logo">
 </p>
 
-# radarcore (Swing Trading Intelligence)
+# radarcore (Swing Trading Scanner)
 
 > [!IMPORTANT]
 > **Disclaimer:** This tool is for educational and research purposes only. It does not constitute financial advice. Trading involves significant risk, and you should always perform your own due diligence before making any investment decisions.
